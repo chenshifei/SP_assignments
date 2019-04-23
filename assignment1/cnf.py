@@ -7,8 +7,15 @@ def cnf(tree):
     # MASTERS: INSERT YOUR CODE HERE!
 
     # BACHELORS: CODE ONLY NEEDED FOR ONE OF THE POSSIBLE VG TASKS
-
-    pass
+    if len(tree) == 2:
+        if isinstance(tree[1], str):
+            return tree
+        root = tree[0] + '+' + tree[1][0]
+        return cnf([root] + tree[1][1:])
+    if len(tree) > 3:
+        root = tree[0] + '|' + tree[1][0]
+        return cnf([tree[0], tree[1], [root] + tree[2:]])
+    return [tree[0], cnf(tree[1]), cnf(tree[2])]
 
 def is_cnf(tree):
     n = len(tree)
@@ -34,7 +41,7 @@ if __name__ == "__main__":
         tree = loads(line)
         sentence = words(tree)
         input = str(dumps(tree))
-        cnf(tree)
+        tree = cnf(tree)
         if is_cnf(tree) and words(tree) == sentence:
             print(dumps(tree))
         else:
