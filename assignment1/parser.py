@@ -3,6 +3,7 @@ CKY algorithm from the "Natural Language Processing" course by Michael Collins
 https://class.coursera.org/nlangp-001/class
 """
 import sys
+import operator
 from sys import stdin, stderr
 from time import time
 from json import dumps
@@ -70,7 +71,7 @@ def CKY(pcfg, norm_words):
                             backpointers[start][end][sym] = bp
                 scores[start][end][sym] = best
 
-    print('Parsing time: {0:.2f}s'.format(time() - parsing_start))
+    print('Parsing time: {0:.2f}s'.format(time() - parsing_start), file=stderr)
 
     # Below is one option for retrieving the best trees, assuming we only want trees with the "S" category
     # This is a simplification, since not all sentences are of the category "S"
@@ -78,13 +79,9 @@ def CKY(pcfg, norm_words):
     # Below it is also assumed that it is called "bp"
     # return backtrace(bp[0, n, "S"], bp)
 
-    possible_roots = backpointers[0][n]
+    possible_roots = scores[0][n]
     root = 'S'
-    for node, pointers in possible_roots.items():
-        if pointers:
-            root = node
-            break
-
+    root = max(possible_roots.items(), key=operator.itemgetter(1))[0]
     tree = backtrace(backpointers[0][n][root], backpointers)
     return tree
 
