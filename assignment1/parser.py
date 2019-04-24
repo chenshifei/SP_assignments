@@ -7,6 +7,7 @@ import operator
 from sys import stdin, stderr
 from time import time
 from json import dumps
+from multiprocessing import Pool
 
 from collections import defaultdict
 from pprint import pprint
@@ -45,8 +46,6 @@ def CKY(pcfg, norm_words):
 
     # Code for adding the words to the chart
 
-    parsing_start = time()
-
     for i, (norm, word) in enumerate(norm_words):
         for (c, w), p in pcfg.q1.items():
             if w == norm:
@@ -55,14 +54,19 @@ def CKY(pcfg, norm_words):
 
     # Code for the dynamic programming part, where larger and larger subtrees are built
 
+    sym_list = pcfg.binary_rules.keys()
     for end in range(2, n + 1):
         for start in range(end - 2, -1, -1):
-            for sym in pcfg.binary_rules.keys():
+            for sym in sym_list:
                 best = 0
                 for y1, y2 in pcfg.binary_rules[sym]:
                     for mid in range(start + 1, end):
-                        t1 = scores[start][mid][y1]
-                        t2 = scores[mid][end][y2]
+                        cell1 = scores[start][mid]
+                        cell2 = scores[mid][end]
+                        if not cell1.get(y1) or not cell2.get(y2):
+                            continue
+                        t1 = cell1[y1]
+                        t2 = cell2[y2]
                         p = pcfg.q2[(sym, y1, y2)]
                         candidate = t1 * t2 * p
                         if best < candidate:
@@ -70,8 +74,6 @@ def CKY(pcfg, norm_words):
                             bp = ((sym, y1, y2), start, mid, end)
                             backpointers[start][end][sym] = bp
                 scores[start][end][sym] = best
-
-    print('Parsing time: {0:.2f}s'.format(time() - parsing_start), file=stderr)
 
     # Below is one option for retrieving the best trees, assuming we only want trees with the "S" category
     # This is a simplification, since not all sentences are of the category "S"
@@ -102,6 +104,12 @@ class Parser:
 def display_tree(tree):
     pprint(tree)
 
+def do_parse_task(sentence):
+    parsing_start = time()
+    tree = parser.parse(sentence)
+    print(dumps(tree))
+    print('Parsing time: {:.2f}s'.format(time() - parsing_start), file=stderr)
+
 if __name__ == "__main__":
 
     if len(sys.argv) != 2:
@@ -116,7 +124,7 @@ if __name__ == "__main__":
     parser = Parser(pcfg)
 
     print("Parsing sentences ...", file=stderr)
-    for sentence in stdin:
-        tree = parser.parse(sentence)
-        print(dumps(tree))
+    with Pool(4) as pool:
+        pool.map(do_parse_task, stdin)
+    
     print("Time: (%.2f)s\n" % (time() - start), file=stderr)
