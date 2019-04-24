@@ -75,7 +75,8 @@ def CKY(pcfg, norm_words):
                             backpointers[start][end][sym] = bp
                 scores[start][end][sym] = best
 
-    # Below is one option for retrieving the best trees, assuming we only want trees with the "S" category
+    # Below is one option for retrieving the best trees,
+    # assuming we only want trees with the "S" category
     # This is a simplification, since not all sentences are of the category "S"
     # The exact arguments also depends on how you implement your back-pointer chart.
     # Below it is also assumed that it is called "bp"
@@ -126,5 +127,5 @@ if __name__ == "__main__":
     print("Parsing sentences ...", file=stderr)
     with Pool(4) as pool:
         pool.map(do_parse_task, stdin)
-    
+
     print("Time: (%.2f)s\n" % (time() - start), file=stderr)
