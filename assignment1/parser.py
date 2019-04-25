@@ -2,8 +2,9 @@
 CKY algorithm from the "Natural Language Processing" course by Michael Collins
 https://class.coursera.org/nlangp-001/class
 """
-import sys
 import operator
+import itertools
+import sys
 from sys import stdin, stderr
 from time import time
 from json import dumps
@@ -18,15 +19,17 @@ from tokenizer import PennTreebankTokenizer
 def argmax(lst):
     return max(lst) if lst else (0.0, None)
 
-def backtrace(back, bp):
+def backtrace(pcfg, back, bp):
     # ADD YOUR CODE HERE
     # Extract the tree from the backpointers
     if len(back) == 3:
         (c, c1), start, end = back
-        return [c, c1]
+        return [pcfg.N[c], c1]
     else:
         (c, c1, c2), start, mid, end = back
-        return [c, backtrace(bp[start][mid][c1], bp), backtrace(bp[mid][end][c2], bp)]
+        return [pcfg.N[c],
+                backtrace(pcfg, bp[start][mid][c1], bp),
+                backtrace(pcfg, bp[mid][end][c2], bp)]
 
 def CKY(pcfg, norm_words):
     # ADD YOUR CODE HERE
@@ -48,23 +51,29 @@ def CKY(pcfg, norm_words):
 
     for i, (norm, word) in enumerate(norm_words):
         for (c, w), p in pcfg.q1.items():
-            if w == norm:
+            if w == pcfg.well_known_words.index(norm):
                 scores[i][i + 1][c] = p
                 backpointers[i][i + 1][c] = ((c, word), i, i + 1)
 
     # Code for the dynamic programming part, where larger and larger subtrees are built
 
     sym_list = pcfg.binary_rules.keys()
+
     for end in range(2, n + 1):
         for start in range(end - 2, -1, -1):
             for sym in sym_list:
                 best = 0
-                for y1, y2 in pcfg.binary_rules[sym]:
-                    for mid in range(start + 1, end):
-                        cell1 = scores[start][mid]
-                        cell2 = scores[mid][end]
-                        if not cell1.get(y1) or not cell2.get(y2):
-                            continue
+                y1s, y2s = zip(*pcfg.binary_rules[sym])
+                y1s = set(y1s)
+                y2s = set(y2s)
+                for mid in range(start + 1, end):
+                    cell1 = scores[start][mid]
+                    cell2 = scores[mid][end]
+                    possible_y1s = y1s.intersection(cell1.keys())
+                    possible_y2s = y2s.intersection(cell2.keys())
+                    possible_rules = set(itertools.product(possible_y1s, possible_y2s))
+                    possible_rules = possible_rules.intersection(pcfg.binary_rules[sym])
+                    for y1, y2 in possible_rules:
                         t1 = cell1[y1]
                         t2 = cell2[y2]
                         p = pcfg.q2[(sym, y1, y2)]
@@ -85,7 +94,7 @@ def CKY(pcfg, norm_words):
     possible_roots = scores[0][n]
     root = 'S'
     root = max(possible_roots.items(), key=operator.itemgetter(1))[0]
-    tree = backtrace(backpointers[0][n][root], backpointers)
+    tree = backtrace(pcfg, backpointers[0][n][root], backpointers)
     return tree
 
 class Parser:
@@ -119,13 +128,18 @@ if __name__ == "__main__":
 
     start = time()
     grammar_file = sys.argv[1]
-    print("Loading grammar from " + grammar_file + " ...", file=stderr)    
+    print("Loading grammar from " + grammar_file + " ...", file=stderr)
     pcfg = PCFG()
     pcfg.load_model(grammar_file)
     parser = Parser(pcfg)
 
     print("Parsing sentences ...", file=stderr)
-    with Pool(4) as pool:
-        pool.map(do_parse_task, stdin)
+
+    if __debug__:
+        for sentence in stdin:
+            do_parse_task(sentence)
+    else:
+        with Pool(4) as pool:
+            pool.map(do_parse_task, stdin)
 
     print("Time: (%.2f)s\n" % (time() - start), file=stderr)

@@ -8,8 +8,16 @@
             "name": "Python: parser.py",
             "type": "python",
             "request": "launch",
-            "args": ["data/dev_grammar.dat", "<", "data/debug.raw"],
+            "args": ["data/debug_grammar.dat", "<", "data/debug.raw"],
             "program": "${workspaceFolder}/parser.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: pcfg.py",
+            "type": "python",
+            "request": "launch",
+            "args": ["data/debug_cnf.dat", "data/debug_grammar.dat"],
+            "program": "${workspaceFolder}/pcfg.py",
             "console": "integratedTerminal"
         },
         {

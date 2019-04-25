@@ -758,3 +758,5 @@ ASALocalRun/
 healthchecksdb
 
 # End of https://www.gitignore.io/api/macos,latex,python,visualstudio
+
+junk.txt
