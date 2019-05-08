@@ -63,17 +63,29 @@ def CKY(pcfg, norm_words):
         for start in range(end - 2, -1, -1):
             for sym in sym_list:
                 best = 0
-                y1s, y2s = zip(*pcfg.binary_rules[sym])
-                y1s = set(y1s)
-                y2s = set(y2s)
-                for mid in range(start + 1, end):
-                    cell1 = scores[start][mid]
-                    cell2 = scores[mid][end]
-                    possible_y1s = y1s.intersection(cell1.keys())
-                    possible_y2s = y2s.intersection(cell2.keys())
-                    possible_rules = set(itertools.product(possible_y1s, possible_y2s))
-                    possible_rules = possible_rules.intersection(pcfg.binary_rules[sym])
-                    for y1, y2 in possible_rules:
+                
+                # The code below is the intersection based lookup
+
+                # y1s, y2s = zip(*pcfg.binary_rules[sym])
+                # y1s = set(y1s)
+                # y2s = set(y2s)
+                # for mid in range(start + 1, end):
+                #     cell1 = scores[start][mid]
+                #     cell2 = scores[mid][end]
+                #     possible_y1s = y1s.intersection(cell1.keys())
+                #     possible_y2s = y2s.intersection(cell2.keys())
+                #     possible_rules = set(itertools.product(possible_y1s, possible_y2s))
+                #     possible_rules = possible_rules.intersection(pcfg.binary_rules[sym])
+                #     for y1, y2 in possible_rules:
+
+                # The code below is the regular non-intersection lookup
+
+                for y1, y2 in pcfg.binary_rules[sym]:
+                    for mid in range(start + 1, end):
+                        cell1 = scores[start][mid]
+                        cell2 = scores[mid][end]
+                        if not cell1.get(y1) or not cell2.get(y2):
+                            continue
                         t1 = cell1[y1]
                         t2 = cell2[y2]
                         p = pcfg.q2[(sym, y1, y2)]
