@@ -126,11 +126,14 @@ class Parser:
 def display_tree(tree):
     pprint(tree)
 
-def do_parse_task(sentence):
+def do_parse_task(seqno, sentence):
     parsing_start = time()
     tree = parser.parse(sentence)
-    print(dumps(tree))
-    print('Parsing time: {:.2f}s'.format(time() - parsing_start), file=stderr)
+    # Keep seqno as a reference number in case the task order is arbitrary
+    # This happens when multithreading the tasks. eval.py couldn't handle
+    # if the line numbers in the prediction file and the golden file don't match
+    print(dumps({seqno: tree}), flush=True)
+    print('Seq {} parsing time: {:.2f}s'.format(seqno, time() - parsing_start), file=stderr)
 
 if __name__ == "__main__":
 
@@ -148,10 +151,10 @@ if __name__ == "__main__":
     print("Parsing sentences ...", file=stderr)
 
     if __debug__:
-        for sentence in stdin:
-            do_parse_task(sentence)
+        for i, sentence in enumerate(stdin):
+            do_parse_task(i, sentence)
     else:
         with Pool(4) as pool:
-            pool.map(do_parse_task, stdin)
+            pool.starmap(do_parse_task, enumerate(stdin))
 
     print("Time: (%.2f)s\n" % (time() - start), file=stderr)

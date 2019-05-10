@@ -129,7 +129,10 @@ class ParseEvaluator:
     self.nt_score = defaultdict(FScore)
     
   def compute_fscore(self, key_trees, predicted_trees):
-    for trees in zip(key_trees, predicted_trees):
+    for i, key_tree in enumerate(key_trees):
+      if not predicted_trees.get(str(i)):
+        continue
+      trees = [key_tree, predicted_trees[str(i)]]
       tops = list(map(TreeOperations, trees))
       tops[0].check_well_formed()
       tops[1].check_well_formed()
@@ -165,7 +168,13 @@ class ParseEvaluator:
 
 def main(key_file, prediction_file):
   key_trees = [json.loads(l) for l in key_file]
-  predicted_trees = [json.loads(l) for l in prediction_file]
+  predicted_trees = {}
+  for l in prediction_file:
+    try:
+      predicted_trees.update(json.loads(l))
+    except:
+      print('Error at {}'.format(l), file=sys.stderr)
+
   evaluator = ParseEvaluator()
   evaluator.compute_fscore(key_trees, predicted_trees)
   evaluator.output()
