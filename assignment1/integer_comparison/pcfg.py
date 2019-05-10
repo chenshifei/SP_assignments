@@ -10,13 +10,20 @@ from time import time
 
 class PCFG:
     RARE_WORD_COUNT = 5
+    if __debug__:
+        RARE_WORD_COUNT = 0
 
     def __init__(self):
+        self._sym_count = Counter()
+        self._unary_count = Counter()
+        self._binary_count = Counter()
+        self._words_count = Counter()
         self.q1 = defaultdict(float)
         self.q2 = defaultdict(float)
         self.q3 = defaultdict(float)
-        self.well_known_words = set()
-        self.N = set()
+        self.well_known_words = []
+        self.N = []
+        self.__N_set = set()
         self.binary_rules = defaultdict(list)
         self.unary_rules = defaultdict(list)
 
@@ -24,45 +31,41 @@ class PCFG:
         return word if word in self.well_known_words else "_RARE_" #word_class(word)
 
     def __build_caches(self):
-        for x, _ in self.q1.keys():
-            self.N.add(x)
-
         for x, y1, y2 in self.q2.keys():
-            self.N.update(set([x, y1, y2]))
-            self.binary_rules[x].append((y1, y2))  
+            self.binary_rules[x].append((y1, y2))
 
         for x, y1 in self.q3.keys():
-            self.N.update(set([x, y1]))
             self.unary_rules[x].append((y1))
 
 
     def learn_from_treebank(self, treebank):
-        self.sym_count = Counter()
-        self.unary_count = Counter()
-        self.binary_count = Counter()
-        self.words_count = Counter()
-
         for s in open(treebank):
             self.count(loads(s))
 
         # Words
-        for word, count in self.words_count.items():
+        for word, count in self._words_count.items():
             if count >= PCFG.RARE_WORD_COUNT:
-                self.well_known_words.add(word)
+                self.well_known_words.append(word)
+        self.well_known_words = sorted(self.well_known_words)
 
         # Normalise the unary rules count
         norm = Counter()
-        for (x, word), count in self.unary_count.items():
+        for (x, word), count in self._unary_count.items():
             norm[(x, self.norm_word(word))] += count
-        self.unary_count = norm
+        self._unary_count = norm
 
         # Q1
-        for (x, word), count in self.unary_count.items():
-            self.q1[x, word] = self.unary_count[x, word] / self.sym_count[x]
+        for (x, word), count in self._unary_count.items():
+            x_idx = self.N.index(x)
+            w_idx = self.well_known_words.index(word)
+            self.q1[x_idx, w_idx] = self._unary_count[x, word] / self._sym_count[x]
 
         # Q2
-        for (x, y1, y2), count in self.binary_count.items():
-            self.q2[x, y1, y2] = self.binary_count[x, y1, y2] / self.sym_count[x]
+        for (x, y1, y2), count in self._binary_count.items():
+            x_idx = self.N.index(x)
+            y1_idx = self.N.index(y1)
+            y2_idx = self.N.index(y2)
+            self.q2[x_idx, y1_idx, y2_idx] = self._binary_count[x, y1, y2] / self._sym_count[x]
 
         # Q3 currently not handled
 
@@ -75,12 +78,14 @@ class PCFG:
 
         # Count the non-terminal symbols
         sym = tree[0]
-        self.sym_count[sym] += 1
+        self._sym_count[sym] += 1
+        self.__N_set.add(sym)
 
         if len(tree) == 3:
             # Binary Rule
             y1, y2 = (tree[1][0], tree[2][0])
-            self.binary_count[(sym, y1, y2)] += 1
+            self._binary_count[(sym, y1, y2)] += 1
+            self.__N_set.update(set([y1, y2]))
 
             # Recursively count the children
             self.count(tree[1])
@@ -89,9 +94,10 @@ class PCFG:
         elif len(tree) == 2:
             # Unary Rule
             word = tree[1]
-            self.unary_count[(sym, word)] += 1
-            self.words_count[word] += 1
+            self._unary_count[(sym, word)] += 1
+            self._words_count[word] += 1
 
+        self.N = sorted(self.__N_set)
 
     def save_model(self, path):
         with open(path, 'w') as model:
@@ -102,6 +108,8 @@ class PCFG:
                 model.write(dumps(['Q2', x, y1, y2, p]) + '\n')
 
             # Q3 currently not handled
+
+            model.write(dumps(['N', self.N]) + '\n')
 
             model.write(dumps(['WORDS', list(self.well_known_words)]) + '\n')
 
@@ -121,6 +129,9 @@ class PCFG:
                 elif data[0] == 'Q3':
                     _, x, y1, p = data
                     self.q3[x, y1] = p
+
+                elif data[0] == 'N':
+                    self.N = data[1]
 
                 elif data[0] == 'WORDS':
                     self.well_known_words = data[1]

@@ -1,2 +1,0 @@
-Parsing time: 0.40
-["NP", ["NNP", "Pierre"], ["NP|DT|NNP", ["NN", "Vinken"], ["S+VP", ["MD", "will"], ["S+VP|MD", ["ADVP+RB", "soon"], ["VP", ["VB", "join"], ["NP", ["DT", "the"], ["NP|DT", ["NN", "board"], [".", "."]]]]]]]]
