@@ -59,6 +59,7 @@ def CKY(pcfg, norm_words):
         for start in range(end - 2, -1, -1):
             for sym in sym_list:
                 best = 0
+                bp = None
                 for y1, y2 in pcfg.binary_rules[sym]:
                     for mid in range(start + 1, end):
                         cell1 = scores[start][mid]
@@ -72,7 +73,7 @@ def CKY(pcfg, norm_words):
                         if best < candidate:
                             best = candidate
                             bp = ((sym, y1, y2), start, mid, end)
-                            backpointers[start][end][sym] = bp
+                backpointers[start][end][sym] = bp
                 scores[start][end][sym] = best
 
     # Below is one option for retrieving the best trees,
