@@ -1,4 +1,4 @@
-SH = 0; RE = 1; RA = 2; LA = 3;
+SH = 0; RE = 1; RA = 2; LA = 3
 labels = ["det", "nsubj", "case", "nmod", "root"]
 
 def attach_orphans(arcs, n):
@@ -20,8 +20,20 @@ def print_tree(root, arcs, words, indent):
 def transition(trans, stack, buffer, arcs):
     if isinstance(trans, int):
         if trans == SH:
-            stack.insert(0, buffer.pop(0))
+            stack.append(buffer.pop(0))
     # add code for missing transitions: RE, (RA, label), (LA, label)
+        elif trans == RE:
+            stack.pop()
+    elif isinstance(trans, tuple):
+        top = stack[-1]
+        if trans[0] == RA:
+            next_ = buffer.pop(0)
+            stack.append(next_)
+            arcs.append((top, next_, trans[1]))
+        elif trans[0] == LA:
+            next_ = buffer[0]
+            stack.pop()
+            arcs.append((next_, top, trans[1]))
 
 def parse():
     words = "root the cat is on the mat today".split()
