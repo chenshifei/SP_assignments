@@ -1,6 +1,7 @@
 import sys
+from transition import transition
 
-SH = 0; RE = 1; RA = 2; LA = 3;
+SH = 0; RE = 1; RA = 2; LA = 3
 
 labels = ["nsubj", "csubj", "nsubjpass", "csubjpass", "dobj", "iobj", "ccomp", "xcomp", "nmod", "advcl", "advmod", "neg", "aux", "auxpass", "cop", "mark", "discourse", "vocative", "expl", "nummod", "acl", "amod", "appos", "det", "case", "compound", "mwe", "goeswith", "name", "foreign", "conj", "cc", "punct", "list", "parataxis", "remnant", "dislocated", "reparandum", "root", "dep", "nmod:npmod", "nmod:tmod", "nmod:poss", "acl:relcl", "cc:preconj", "compound:prt"]
 
@@ -34,7 +35,7 @@ def print_tab(arcs, words, tags):
     for i in range(1, len(words)):
         print("\t".join([words[i], tags[i], str(hs[i]), ls[i]]))
     print()
-        
+
 def print_tree(root, arcs, words, indent):
     if root == 0:
         print(" ".join(words[1:]))
@@ -43,13 +44,17 @@ def print_tree(root, arcs, words, indent):
         print(indent + l + "(" + words[h] + "_" + str(h) + ", " + words[d] + "_" + str(d) + ")")
         print_tree(d, arcs, words, indent + "  ")
 
-def transition(trans, stack, buffer, arcs):
-    if isinstance(trans, int):
-        if trans == SH:
-            stack.insert(0, buffer.pop(0))
-    # add code for missing transitions: RE, (RA, label), (LA, label)
-
 def oracle(stack, buffer, heads, labels):
+    stack_top = stack[-1]
+    buf_1st = buffer[0]
+    if heads[stack_top] == buf_1st:
+        return (LA, labels[stack_top])
+    if heads[buf_1st] == stack_top:
+        return (RA, labels[buf_1st])
+
+    buf_1st_dependents = [i for i, x in enumerate(heads) if x == buf_1st]
+    if (buf_1st_dependents and  min(buf_1st_dependents) < stack_top) or heads[buf_1st] < stack_top:
+        return RE
     return SH
 
 def parse(sentence):
