@@ -5,12 +5,23 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: 当前文件",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Python: oracle.py",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/oracle.py",
             "console": "integratedTerminal",
-            "args": ["tab", "<", "example.tab"]
+            "args": [
+                "tab",
+                "<",
+                "example.tab"
+            ]
         }
     ]
 }

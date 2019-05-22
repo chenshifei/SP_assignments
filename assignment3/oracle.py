@@ -1,5 +1,11 @@
+import argparse
 import sys
-from transition import transition
+from transition import transition_arc_eager, transition_arc_standard
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-s', '--standard', action='store_true', help='Choose the alternative arc-standard parsing')
+parser.add_argument('-t', '--tab', action='store_true', help='Output in the tab format')
+ARGS = parser.parse_args()
 
 SH = 0; RE = 1; RA = 2; LA = 3
 
@@ -44,7 +50,7 @@ def print_tree(root, arcs, words, indent):
         print(indent + l + "(" + words[h] + "_" + str(h) + ", " + words[d] + "_" + str(d) + ")")
         print_tree(d, arcs, words, indent + "  ")
 
-def oracle(stack, buffer, heads, labels):
+def oracle_arc_eager(stack, buffer, heads, labels):
     stack_top = stack[-1]
     buf_1st = buffer[0]
     if heads[stack_top] == buf_1st:
@@ -53,8 +59,26 @@ def oracle(stack, buffer, heads, labels):
         return (RA, labels[buf_1st])
 
     buf_1st_dependents = [i for i, x in enumerate(heads) if x == buf_1st]
-    if (buf_1st_dependents and  min(buf_1st_dependents) < stack_top) or heads[buf_1st] < stack_top:
+    if (buf_1st_dependents and min(buf_1st_dependents) < stack_top) or heads[buf_1st] < stack_top:
         return RE
+    return SH
+
+def oracle_arc_standard(stack, buffer, heads, labels, arcs):
+    if len(stack) < 2:
+        return SH
+    stack_1st = stack[-1]
+    stack_2nd = stack[-2]
+    if heads[stack_2nd] == stack_1st:
+        return (LA, labels[stack_2nd])
+    if heads[stack_1st] == stack_2nd:
+        dependents = [i for i, x in enumerate(heads) if x == stack_1st]
+        all_dependent_arcs_build = True
+        for d in dependents:
+            if not (stack_1st, d, labels[d]) in arcs:
+                all_dependent_arcs_build = False
+                break
+        if all_dependent_arcs_build:
+            return (RA, labels[stack_1st])
     return SH
 
 def parse(sentence):
@@ -66,18 +90,27 @@ def parse(sentence):
     stack = [0]
     buffer = [x for x in range(1, len(words))]
     arcs = []
-    while buffer:
-        trans = oracle(stack, buffer, heads, labels)
-        transition(trans, stack, buffer, arcs)
+    if ARGS.standard:
+        while True:
+            trans = oracle_arc_standard(stack, buffer, heads, labels, arcs)
+            try:
+                transition_arc_standard(trans, stack, buffer, arcs)
+            except ValueError:
+                print('Sentence is not projective!', file=sys.stderr)
+                print(sentence, file=sys.stderr)
+                break
+            if not buffer and len(stack) == 1:
+                break
+    else:
+        while buffer:
+            trans = oracle_arc_eager(stack, buffer, heads, labels)
+            transition_arc_eager(trans, stack, buffer, arcs)
     attach_orphans(arcs, len(words))
-    if tab_format:
+    if ARGS.tab:
         print_tab(arcs, words, tags)
     else:
         print_tree(0, arcs, words, "")
 
 if __name__ == "__main__":
-    tab_format = False
-    if len(sys.argv) == 2 and sys.argv[1] == "tab":
-        tab_format = True
-    for sentence in read_sentences():
+    for i, sentence in  enumerate(read_sentences()):
         parse(sentence)

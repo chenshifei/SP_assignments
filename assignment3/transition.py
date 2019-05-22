@@ -17,7 +17,7 @@ def print_tree(root, arcs, words, indent):
         print(indent + l + "(" + words[h] + "_" + str(h) + ", " + words[d] + "_" + str(d) + ")")
         print_tree(d, arcs, words, indent + "  ")
 
-def transition(trans, stack, buffer, arcs):
+def transition_arc_eager(trans, stack, buffer, arcs):
     if isinstance(trans, int):
         if trans == SH:
             stack.append(buffer.pop(0))
@@ -35,13 +35,37 @@ def transition(trans, stack, buffer, arcs):
             stack.pop()
             arcs.append((next_, top, trans[1]))
 
+def transition_arc_standard(trans, stack, buffer, arcs):
+    if isinstance(trans, int):
+        if trans == SH:
+            if not buffer:
+                raise ValueError('Sentence is not projective')
+            stack.append(buffer.pop(0))
+    # add code for missing transitions: RE, (RA, label), (LA, label)
+    elif isinstance(trans, tuple):
+        head_idx = 0
+        tail_idx = 0
+        if trans[0] == RA:
+            head_idx = -2
+            tail_idx = -1
+        elif trans[0] == LA:
+            head_idx = -1
+            tail_idx = -2
+        else:
+            # Do nothing
+            return
+        arcs.append((stack[head_idx], stack[tail_idx], trans[1]))
+        stack.pop(tail_idx)
+
 def parse():
     words = "root the cat is on the mat today".split()
     stack = [0]
     buffer = [x for x in range(1, len(words))]
     arcs = []
     for trans in [SH, (LA, "det"), SH, (LA, "nsubj"), SH, SH, SH, (LA, "det"), (LA, "case"), (RA, "nmod"), RE, (RA, "nmod")]:
-        transition(trans, stack, buffer, arcs)
+        transition_arc_eager(trans, stack, buffer, arcs)
+    # for trans in [SH, SH, (LA, "det"), SH, (LA, "nsubj"), SH, SH, SH, (LA, "det"), (LA, "case"), (RA, "nmod"), SH, (RA, "nmod")]:
+    #     transition_arc_standard(trans, stack, buffer, arcs)
     attach_orphans(arcs, len(words))
     print_tree(0, arcs, words, "")
 
