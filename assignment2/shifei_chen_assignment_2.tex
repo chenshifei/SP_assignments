@@ -1,0 +1,107 @@
+% !TEX program = xelatex
+% !BIB program = bibtex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% LATEX FORMATTING - LEAVE AS IS %%%%%%%%%%%%%%%%%%%%
+\documentclass[11pt]{article} % documenttype: article
+\usepackage[top=20mm,left=20mm,right=20mm,bottom=15mm,headsep=15pt,footskip=15pt,a4paper]{geometry} % customize margins
+\usepackage{times} % fonttype
+\usepackage{natbib}
+\usepackage{xeCJK}
+
+\makeatletter         
+\def\@maketitle{   % custom maketitle 
+\begin{center}
+{\bfseries \@title}
+{\bfseries \@author}
+\end{center}
+\smallskip \hrule \bigskip }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% MAKE CHANGES HERE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title{{\LARGE Literature Review on Bitext Parsing}\\[1.5mm]Syntactic Parsing: Assignment 2\\} % Replace 'X' by number of Assignment
+\author{Shifei Chen} % Replace 'Firstname Lastname' by your name.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% BEGIN DOCUMENT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% From here on, edit document. Use sections, subsections, etc.
+%%% to structure your answers.
+\begin{document}
+\maketitle
+
+\section{Introduction}
+Natural Language comes with ambiguity. For example in English it is often the case that prepositional phrase (PP) can modify both the direct or distant  preceding noun. The sentence ``I booked a flight from LA'', can either mean that ``I'' have booked a flight which will take off from LA, or ``I'' have booked a flight when I was in LA.
+
+But the interesting things, natural languages that are unrelated usually are not ambiguous in the same way \citep{Huang:2009:BSP:1699648.1699668}. In other words, the ambiguity in one language ofter is clear in its distant relative. Like the sentence above, in Japanese one should explicitly add the particle ``の'' after ``from LA'' to distinguish these two semantics\footnote{The two sentence are ``LAからのフライトを予約しました'' and ``LAからフライトを予約しました'', which mean ``I booked a flight that takes off from LA'' and ``I booked a flight when I was in LA'', respectively.}.
+
+Therefore it's intuitive to leverage information from another language to help solve the ambiguity in the target language. I have choosen two papers from \cite{Burkett:2008:TLB:1613715.1613828} and \cite{Huang:2009:BSP:1699648.1699668}, which both presented encourage results in this field. Both of their researches were focused on the Penn Chinese treebank and its English translations from \cite{xue2002building}.
+
+\section{Measurements for the Bitext Trees}
+
+In order to leverage the information from one language to another, both papers agreed on an idea that each node in a sentence of one language should align to its couter part in the corrsponding translation in the other language, even though the span of the node may not be exactly the same.
+
+\subsection{The Model}
+
+\cite{Burkett:2008:TLB:1613715.1613828} designed their model as
+
+\begin{equation}
+    P(t, a, t^\prime|s, s^\prime)
+\end{equation}
+
+which is the probability of the triple $(t, a, t^\prime)$. Here $t$ and $t^\prime$ are the trees parsed from the source language and the target language, while $a$ is the alignment, or the at-most-one-to-one matchings between the tree pair. The euqation above is a general log-linear(maximum extropy) distribution over the triple $(t, a, t^\prime)$ for a given sentence pair $(s, s^\prime)$.
+
+\subsection{Alignments}
+
+They have also defined several features based on the theory to try to measure that alignment between two languages. For a node $n$ in the source language and the node $n^\prime$ in the target language, they have defined $a(v, v^\prime)$ as the notation of the alignment for words inside the bispan, which is the posterior probability calculated by an independent word aligner. They believe that a good node alignment means that should be more word-to-word alignment for each word inside the nodes $n$ and $n\prime$. So for each node pair, $\sum_{v\in i(n)}\sum_{v^\prime\in i(n^\prime)}a(v, v^\prime)$ means the sum of word alignments for each word inside the source node $n$ and the target node $n^\prime$. $\sum_{v\in i(n)}\sum_{v^\prime\in o(n^\prime)}a(v, v^\prime)$ and $\sum_{v\in o(n)}\sum_{v^\prime\in i(n^\prime)}a(v, v^\prime)$ are the measurements to check the probability of a word alignment pair if one of hte word is outside the bispan. In the final experiments, they used a hard alignment feature (take the hard top-1 output from the aligner instead of all of it) and the scaled alignment feature (alignment divided by the size of the span) that were derived from these three base alignment features.
+
+\subsection{Other Features}
+
+Beside word alignemnt features, \cite{Burkett:2008:TLB:1613715.1613828} have also defined tree structure features and monolingual features. In later experiments, they have showed that all bilingual features are proved to be better in contributing to the model's performance than monolingual features.
+
+\section{Training}
+
+During traininig \cite{Burkett:2008:TLB:1613715.1613828} faced the problem that the weights, which maximize the marginal log likelihood of what they did observe given their sentence pairs, were hard to compute. So they have developed several approximations and modifications.
+
+\subsection{Viterbi Alignments}
+
+The original log-likelihood that they would like to maximize requires summing over all of the possible alignments, which is unfortunatelly intractable \citep{Valiant1979TheCO}. But if the alignment $a$ is a fixed number, then optimization becames much more feasible. \cite{Burkett:2008:TLB:1613715.1613828} finally presumed an optimal $a$ over the tree pair and then continued to find the maximum weight $w$ using an EM-like algorithm.
+
+\subsection{Pruning}
+
+\cite{Burkett:2008:TLB:1613715.1613828} used $k$-best lists during training and testing for both of their source and target tree sets, $T$ and $T^\prime$. In order to reduce the search space over the whole tree set in the training set, they pruned the tree sets by the F1 score, so from the best until the $k$th best tree will be kept in the training set. A same strategy was used on the test set as well, though there they rank the tree set by a different metric.
+
+Later in the experiments they have showed that the best $k$ for the training set was 25, and the best $k$ for the test set was 500. Also the performance of the parser was limited more by the model's reliance on the baseline parser, rather by the errors from a small $k$.
+
+\section{A More Practical Application}
+
+The other paper from \cite{Huang:2009:BSP:1699648.1699668} showed a potentially more practical application of the above discovery. Their strategy is that rather than parsing the whole bitext all the text, we only need to consult the other language when we have encoutered an ambiguity in the source language.
+
+\cite{Huang:2009:BSP:1699648.1699668} believed that the errors in an arc-standard parser are mainly caused by the conflicts between \verb|SHIFT| and \verb|REDUCE|(which is a different term and includes both the \verb|LEFT-ARC| and the \verb|RIGHT-ARC| action).
+
+\subsection{Bilingual Contiguity Features}
+
+Their application is based on these two following observation.
+
+\textbf{Pro-Reduce}: For the top two stack words $s_{t-1}$ and $s_t$, their correct span in the target language should also be contiguous if the preferred action is \verb|REDUCE|. This is captured in the feature $c(s_{t-1}, s_t)$.
+
+\textbf{Pro-Shift}: For the stack top word $s_t$ and the current word in the buffer $w_i$, their correct span in the target language should start from $S_t$ without necessarily ending at $w_i$. This is captured in the feature $c_R(s_t, w_i)$.
+
+Hence, $c(s_{t-1}, s_t)=+$ and $c_R(s_t, w_i)=-$ suggest \verb|REDUCE| should be take while $c(s_{t-1}, s_t)=-$ and $c_R(s_t, w_i)=+$ suggest the opposite. Then even designed a more discriminatory feature by combining these two sub features, $c(s_{t-1}, s_t)\circ c_R(s_t, w_i)$.
+
+\cite{Huang:2009:BSP:1699648.1699668} showed that these features indeed can capture conflicts between \verb|SHIFT| and \verb|REDUCE|, especially in the case when \verb|SHIFT| was mis-executed by the parser.
+
+\section{Results}
+
+\cite{Burkett:2008:TLB:1613715.1613828} conducted their tests on the Penn Chinese Treebank and their bitext parser outperformed the state-of-the-art(2008) monolingual parser baseline by 2.5 $F_1$ at predicting English side trees and 1.8 $F_1$ score at predicting Chinese side trees. Plus, their performance on the Chinese treebank was the highest published numbers on the same corpora in 2008. Even in sentences that lack translations, their parser can still get higher $F_1$ scores.
+
+Following their encouraging results, the parser made by \cite{Huang:2009:BSP:1699648.1699668} raised the $F_1$ score from their baseline by 0.6 on both the English and the Chinese corpora with negligible efficiency overhead (6\%). However their result on the Chinese side trees didn't outperformed the Berkeley parser, which they believe was because they had engineered their features on English not Chinese.
+
+\section{Conclusion}
+
+Both papers demostrated techniques and potentials in bitext parsing, especially for languages that are largely different from each other. Their results were positive and encouraging as both of their theories are proved to outperform their baselines.
+
+In addition, \cite{Burkett:2008:TLB:1613715.1613828} had discussed that how could Machine Learning could benefit from bitext parsing aswell, while \cite{Huang:2009:BSP:1699648.1699668} did a great analysis on typical conflicts for an arc-standard parser and showed that an arc-standard parser might be as good as an arc-eager one. Based on their contribution, more future works should be promising in this field.
+
+\bibliography{shifei_chen_assignment_2}
+\bibliographystyle{apalike}
+
+\end{document}
